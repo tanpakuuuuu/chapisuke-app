@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ちゃぴすけ">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#f4f4f6">
+<title>ちゃぴすけ</title>
+<style>
+  :root{--bg:#f4f4f6;--card:#fff;--ink:#141416;--sub:#96969c;--line:#e7e7ea;--soft:#ececef;--now:#3a3a3f;}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+  html,body{height:100%;overscroll-behavior-y:contain;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    background:#dcdcdf;color:var(--ink);display:flex;justify-content:center;font-feature-settings:"palt";}
+  .phone{width:100%;max-width:480px;background:var(--bg);min-height:100vh;position:relative;display:flex;flex-direction:column;padding-bottom:140px;}
+
+  /* Header */
+  .header{padding:16px 20px 4px;}
+  .header-top{display:flex;align-items:flex-start;justify-content:space-between;}
+  .month{display:flex;align-items:baseline;gap:12px;}
+  .month .big{font-size:56px;font-weight:800;line-height:.95;letter-spacing:-2px;}
+  .month .meta .m{font-size:16px;font-weight:800;}
+  .month .meta .y{font-size:12px;color:var(--sub);font-weight:600;margin-top:2px;}
+  .hbtns{display:flex;gap:6px;align-items:center;margin-top:6px;}
+  .cbtn{width:36px;height:36px;border-radius:50%;background:#e9e9ec;border:none;
+    display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ink);font-weight:700;cursor:pointer;}
+  .today-pill{height:36px;padding:0 16px;border-radius:18px;background:#141416;color:#fff;
+    font-size:14px;font-weight:800;border:none;cursor:pointer;}
+  #refresh.spin{animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .week{display:grid;grid-template-columns:repeat(7,1fr);padding:12px 6px 4px;text-align:center;}
+  .week .dow{font-size:11px;color:var(--sub);font-weight:700;margin-bottom:7px;}
+  .week .dow.sun{color:#e08a8a;}.week .dow.sat{color:#8aa5e0;}
+  .week .day{font-size:16px;font-weight:700;height:34px;width:34px;line-height:34px;border-radius:50%;margin:0 auto;}
+  .week .day.active{background:#141416;color:#fff;font-weight:800;}
+
+  /* All-day row */
+  .allday{display:flex;align-items:center;gap:8px;padding:12px 18px 6px;flex-wrap:wrap;}
+  .allday .lb{font-size:11.5px;color:var(--sub);font-weight:700;flex:none;}
+  .allday .chip{background:#fff;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;
+    box-shadow:0 1px 3px rgba(20,20,22,.05);display:flex;align-items:center;gap:6px;cursor:pointer;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .2s;}
+  .allday .chip.done{opacity:.45;text-decoration:line-through;}
+  .allday .chip .dot{width:6px;height:6px;border-radius:50%;background:#f0a860;flex:none;}
+
+  /* Unplaced strip (horizontal scroll) */
+  .unplaced-wrap{padding:6px 0 8px;}
+  .unplaced-h{font-size:11.5px;color:var(--sub);font-weight:700;padding:0 20px 6px;display:flex;align-items:center;gap:6px;}
+  .unplaced-h .cnt{background:#ececef;color:#8a8a90;border-radius:9px;padding:2px 8px;font-size:10.5px;font-weight:800;}
+  .unplaced{display:flex;gap:8px;padding:2px 20px 4px;overflow-x:auto;scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .unplaced::-webkit-scrollbar{display:none;}
+  .unplaced .uchip{flex:none;scroll-snap-align:start;background:#fff;border-radius:12px;padding:9px 13px;font-size:13px;font-weight:700;
+    box-shadow:0 1px 3px rgba(20,20,22,.06);display:flex;align-items:center;gap:8px;cursor:pointer;
+    max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .2s;}
+  .unplaced .uchip.done{opacity:.45;text-decoration:line-through;}
+  .unplaced .uchip .box{width:14px;height:14px;border-radius:5px;border:1.4px solid #bcbcc2;flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;}
+  .unplaced .uchip.done .box{background:#141416;border-color:#141416;}
+  .unplaced .empty-strip{color:#a0a0a6;font-size:12px;font-weight:600;padding:8px 4px;flex:none;}
+
+  /* Timeline */
+  .timeline{position:relative;margin:4px 0 0 0;padding:0 18px;}
+  .hour-row{position:relative;height:60px;}
+  .hour-row .hlabel{position:absolute;left:0;top:-7px;font-size:11px;color:var(--sub);font-weight:600;width:36px;}
+  .hour-row .hline{position:absolute;left:40px;right:0;top:0;border-top:1px solid #ececef;}
+
+  .evcard{position:absolute;left:0;right:0;background:#fff;border-radius:13px;padding:9px 12px;
+    box-shadow:0 1px 3px rgba(20,20,22,.07);border:1px solid rgba(0,0,0,.02);pointer-events:auto;
+    display:flex;align-items:center;gap:10px;transition:opacity .3s,transform .2s;cursor:pointer;}
+  .evcard .body{flex:1;min-width:0;}
+  .evcard .t{font-size:11px;color:var(--sub);font-weight:600;}
+  .evcard .ti{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
+  .evcard .box{width:22px;height:22px;border-radius:50%;border:1.5px solid #cfcfd4;flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;}
+  .evcard.done{opacity:.4;}
+  .evcard.done .ti{text-decoration:line-through;}
+  .evcard.done .box{background:#141416;border-color:#141416;}
+  .evcard.pop{transform:scale(1.03);}
+
+  /* Free-time (just label) */
+  .free{position:absolute;left:0;right:0;background:#f0f0f3;border-radius:14px;padding:10px 14px;pointer-events:none;
+    display:flex;align-items:center;gap:8px;overflow:hidden;}
+  .free .h{font-size:11px;color:var(--sub);font-weight:700;flex:none;}
+  .free .dur{font-size:15px;font-weight:800;letter-spacing:-.5px;}
+  .free .dur .unit{font-size:11px;color:var(--sub);font-weight:700;margin:0 2px 0 1px;}
+
+  /* Now line */
+  .now{position:absolute;left:8px;right:0;height:2px;background:var(--now);z-index:5;pointer-events:none;}
+  .now .tag{position:absolute;left:-8px;top:-11px;background:var(--now);color:#fff;font-size:10.5px;font-weight:800;
+    padding:3px 7px;border-radius:11px;}
+  .now::after{content:"";position:absolute;right:0;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--now);}
+
+  /* Trophy */
+  .trophy-row{display:flex;align-items:center;gap:12px;padding:18px 20px 8px;}
+  .trophy{width:44px;height:44px;border-radius:14px;background:linear-gradient(145deg,#fff3d6,#ffe9b8);
+    display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;}
+  .trophy-row .txt{font-size:15.5px;font-weight:800;flex:1;}
+  .badge{background:#141416;color:#fff;border-radius:12px;min-width:38px;height:28px;
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;padding:0 8px;transition:transform .15s;}
+  .badge.pop{transform:scale(1.25);}
+  .done-list{padding:0 20px;display:flex;flex-direction:column;gap:6px;}
+  .done-list .drow{display:flex;align-items:center;gap:10px;font-size:13.5px;color:#8a8a90;font-weight:600;
+    padding:8px 4px;text-decoration:line-through;cursor:pointer;}
+  .done-list .drow .box{width:16px;height:16px;border-radius:5px;background:#141416;color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:10px;flex:none;}
+  .done-list .empty{color:#a0a0a6;padding:4px;font-size:12.5px;font-weight:600;text-align:center;text-decoration:none;}
+
+  /* Sub sections */
+  .section-h{padding:16px 20px 8px;display:flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:800;color:#6a6a70;letter-spacing:.4px;}
+  .section-h .cnt{margin-left:auto;background:#ececef;color:#8a8a90;border-radius:9px;padding:3px 9px;font-size:11px;font-weight:800;}
+  .list{padding:0 20px;display:flex;flex-direction:column;gap:8px;}
+  .row{background:#fff;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:11px;
+    box-shadow:0 1px 3px rgba(20,20,22,.06);border:1px solid rgba(0,0,0,.02);cursor:pointer;transition:opacity .3s;}
+  .row.done{opacity:.3;}
+  .row .box{width:20px;height:20px;border-radius:7px;border:1.5px solid #bcbcc2;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex:none;}
+  .row.done .box{background:#141416;border-color:#141416;}
+  .row .body{flex:1;min-width:0;}
+  .row .title{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .row.done .title{text-decoration:line-through;}
+  .row .meta{font-size:11px;color:var(--sub);font-weight:600;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;}
+  .row .pill{background:#f2f2f4;border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:800;color:#7a7a80;flex:none;}
+  .row .pill.due{color:#c94f4f;background:#fdeaea;}
+  .row .amt{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;font-size:13px;}
+  .empty{padding:14px 20px;color:#a0a0a6;font-size:13px;text-align:center;font-weight:600;}
+
+  .footer-chapi{text-align:center;padding:20px;color:#a0a0a6;font-size:12px;font-weight:600;}
+
+  /* Modal */
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:none;
+    align-items:flex-end;justify-content:center;opacity:0;transition:opacity .2s;}
+  .backdrop.on{display:flex;opacity:1;}
+  .sheet{width:100%;max-width:480px;background:#fff;border-radius:22px 22px 0 0;padding:22px 22px 34px;
+    transform:translateY(100%);transition:transform .25s;}
+  .backdrop.on .sheet{transform:translateY(0);}
+  .sheet h3{font-size:13px;font-weight:800;margin-bottom:6px;color:var(--sub);}
+  .sheet .task-t{font-size:16px;font-weight:800;margin-bottom:14px;color:var(--ink);}
+  .presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .presets button{padding:9px 14px;border-radius:12px;background:#f2f2f4;border:none;font-size:13.5px;
+    font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit;}
+  .presets button.warn{background:#fdeaea;color:#c94f4f;}
+  .presets button.pri{background:#141416;color:#fff;}
+  .manual{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13px;font-weight:700;flex-wrap:wrap;}
+  .manual input{border:1.5px solid #e0e0e5;border-radius:10px;padding:8px 10px;font-size:14px;font-weight:700;
+    font-family:inherit;width:100px;text-align:center;}
+  .manual .okbtn{padding:8px 14px;border-radius:10px;background:#141416;color:#fff;border:none;font-weight:700;font-family:inherit;cursor:pointer;}
+  .sheet .cancel{width:100%;padding:12px;background:#f2f2f4;border:none;border-radius:12px;
+    font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+
+  /* Undo toast */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(150%);
+    background:#141416;color:#fff;padding:10px 12px 10px 18px;border-radius:26px;
+    font-size:13.5px;font-weight:700;transition:transform .3s;z-index:40;
+    display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.3);}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+  .toast button{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:18px;
+    padding:7px 14px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="header">
+    <div class="header-top">
+      <div class="month"><div class="big" id="day"></div>
+        <div class="meta"><div class="m" id="mon"></div><div class="y" id="yr"></div></div>
+      </div>
+      <div class="hbtns">
+        <button class="cbtn" id="prev">◂</button>
+        <button class="today-pill" id="today">今日</button>
+        <button class="cbtn" id="next">▸</button>
+        <button class="cbtn" id="refresh">↻</button>
+      </div>
+    </div>
+    <div class="week" id="week"></div>
+  </div>
+
+  <div class="allday" id="allday"><span class="lb">☀︎ 終日</span></div>
+
+  <div class="unplaced-wrap">
+    <div class="unplaced-h">🕒 未配置 <span class="cnt" id="cntUn">0</span> <span style="color:#c0c0c6;margin-left:6px">タップで時間を選ぶぷき</span></div>
+    <div class="unplaced" id="unplaced"></div>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+
+  <div class="trophy-row">
+    <div class="trophy">🏆</div>
+    <div class="txt">今日完了したタスク</div>
+    <div class="badge" id="doneCount">0</div>
+  </div>
+  <div class="done-list" id="doneList"></div>
+
+  <div class="section-h">🛒 今週の買い出し <span class="cnt" id="cntBuy">–</span></div>
+  <div class="list" id="buy"><div class="empty">読み込み中…</div></div>
+
+  <div class="section-h">💴 未払いの支払い <span class="cnt" id="cntPay">–</span></div>
+  <div class="list" id="payments"><div class="empty">読み込み中…</div></div>
+
+  <div class="section-h">🕒 あとでやる <span class="cnt" id="cntLater">–</span></div>
+  <div class="list" id="later"><div class="empty">読み込み中…</div></div>
+
+  <div class="footer-chapi">きょうもぼちぼちいこうぷき😇 — ちゃぴすけ 🠖)))ふりふり</div>
+</div>
+
+<div class="backdrop" id="sheet">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <h3>いつやる？</h3>
+    <div class="task-t" id="sheetTask"></div>
+    <div class="presets" id="presets"></div>
+    <div class="manual">
+      <span>手動：</span>
+      <input type="time" id="mStart" value="09:00">
+      <span>〜</span>
+      <input type="time" id="mEnd" value="09:30">
+      <button class="okbtn" onclick="applyManual()">OK</button>
+    </div>
+    <div class="presets" id="actions"></div>
+    <button class="cancel" onclick="closeSheet()">キャンセル</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toastMsg">できたぷき✨</span>
+  <button id="toastBtn" style="display:none">↶ 戻す</button>
+</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s)
+  const jstNow = () => new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Tokyo'}))
+  const fmtMoney = n => n==null ? '' : '¥' + n.toLocaleString('ja-JP')
+  const pad = n => String(n).padStart(2,'0')
+  const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+
+  const PKEY = 'chapisuke.placements.v1'
+  function loadP(){ try{return JSON.parse(localStorage.getItem(PKEY)||'{}')}catch{return{}} }
+  function saveP(p){ localStorage.setItem(PKEY, JSON.stringify(p)) }
+  function getPlace(id){ return loadP()[id] || null }
+  function setPlace(id, v){ const p=loadP(); if(v) p[id]=v; else delete p[id]; saveP(p) }
+
+  let currentDate = jstNow()
+  let allTasks = []  // includes both open + done, with .done flag
+  let doneItems = []
+  let currentSheet = null
+
+  function drawHeader(){
+    const n = currentDate
+    $('#day').textContent = n.getDate()
+    $('#mon').textContent = (n.getMonth()+1)+'月'
+    $('#yr').textContent  = n.getFullYear()
+    const dow = ['日','月','火','水','木','金','土']
+    const w = $('#week'); w.innerHTML=''
+    const start = new Date(n); start.setDate(n.getDate() - n.getDay())
+    for (let i=0;i<7;i++){
+      const d = new Date(start); d.setDate(start.getDate()+i)
+      const cls = i===0?'sun':i===6?'sat':''
+      const active = d.toDateString()===n.toDateString() ? ' active' : ''
+      w.insertAdjacentHTML('beforeend',
+        '<div><div class="dow '+cls+'">'+dow[i]+'</div>'+
+        '<div class="day'+active+'">'+d.getDate()+'</div></div>')
+    }
+  }
+
+  let toastTimer = null, lastUndo = null
+  function showToast(msg, undoAction){
+    const t = $('#toast'), b = $('#toastBtn')
+    $('#toastMsg').textContent = msg
+    if (undoAction){ b.style.display='inline-block'; lastUndo = undoAction }
+    else { b.style.display='none'; lastUndo = null }
+    t.classList.add('show')
+    clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ t.classList.remove('show'); lastUndo = null }, 6000)
+  }
+  $('#toastBtn').addEventListener('click', ()=>{
+    if (lastUndo) lastUndo()
+    $('#toast').classList.remove('show'); lastUndo = null
+  })
+
+  async function api(path, body){
+    const opts = body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}
+    const r = await fetch(path, opts)
+    if (!r.ok) throw new Error(await r.text())
+    return r.json()
+  }
+
+  async function toggle(id, prop, checked, silent){
+    // optimistic update in local state
+    const t = allTasks.find(x=>x.id===id)
+    if (t) t.done = checked
+    render()
+    try {
+      await api('/api/toggle', {pageId:id, property:prop, checked})
+      if (!silent) {
+        showToast(checked ? 'できたぷき✨' : 'もどしたぷき',
+          checked ? () => toggle(id, prop, false, true) : null)
+      }
+      setTimeout(loadAll, 1200)
+    } catch(e){
+      if (t) t.done = !checked
+      render()
+      showToast('うまくいかなかったぷき')
+    }
+  }
+
+  function openSheet(taskId, taskTitle, prefill){
+    currentSheet = { taskId, taskTitle }
+    $('#sheetTask').textContent = taskTitle
+    const now = jstNow()
+    const round = m => Math.floor(m/15)*15
+    const soon = new Date(now); soon.setMinutes(round(now.getMinutes()+15))
+    const nowLabel = pad(soon.getHours())+':'+pad(soon.getMinutes())
+    const p = $('#presets'); p.innerHTML = ''
+    const presets = [
+      { label:'今すぐ（'+nowLabel+'）', s:nowLabel, dur:30 },
+      { label:'9:00', s:'09:00', dur:60 },
+      { label:'12:00', s:'12:00', dur:60 },
+      { label:'15:00', s:'15:00', dur:60 },
+      { label:'18:00', s:'18:00', dur:60 },
+      { label:'20:00', s:'20:00', dur:60 },
+      { label:'終日', allDay:true, cls:'pri' },
+    ]
+    presets.forEach(pr => {
+      const b = document.createElement('button')
+      b.textContent = pr.label
+      if (pr.cls) b.className = pr.cls
+      b.addEventListener('click', () => {
+        if (pr.allDay) place({allDay:true})
+        else {
+          const [h,m] = pr.s.split(':').map(Number)
+          const em = m + pr.dur
+          const end = pad(h + Math.floor(em/60)) + ':' + pad(em%60)
+          place({start:pr.s, end, allDay:false})
+        }
+      })
+      p.appendChild(b)
+    })
+    if (prefill){ $('#mStart').value = prefill.start; $('#mEnd').value = prefill.end }
+    else { $('#mStart').value = '09:00'; $('#mEnd').value = '09:30' }
+    const acts = $('#actions'); acts.innerHTML = ''
+    if (getPlace(taskId)){
+      const rem = document.createElement('button')
+      rem.textContent = '→ 未配置に戻す'; rem.className='warn'
+      rem.addEventListener('click', () => { setPlace(taskId, null); closeSheet(); render() })
+      acts.appendChild(rem)
+    }
+    $('#sheet').classList.add('on')
+  }
+  window.closeSheet = () => { $('#sheet').classList.remove('on'); currentSheet=null }
+  $('#sheet').addEventListener('click', closeSheet)
+
+  function place(v){
+    if (!currentSheet) return
+    v.date = jstNow().toISOString().slice(0,10)
+    setPlace(currentSheet.taskId, v)
+    closeSheet()
+    render()
+    showToast('配置したぷき📝')
+  }
+
+  window.applyManual = () => {
+    const s = $('#mStart').value, e = $('#mEnd').value
+    if (!s || !e) return
+    place({start:s, end:e, allDay:false})
+  }
+
+  const HOUR_START = 6, HOUR_END = 24, HOUR_PX = 60
+  function toMin(t){ const [h,m]=t.split(':').map(Number); return h*60+m }
+  function topFor(t){ return (toMin(t) - HOUR_START*60) * (HOUR_PX/60) }
+
+  function render(){
+    const allday = $('#allday'); allday.innerHTML = '<span class="lb">☀︎ 終日</span>'
+    const unBox = $('#unplaced'); unBox.innerHTML = ''
+    const tl = $('#timeline'); tl.innerHTML = ''
+
+    const placed = [], unplaced = [], alldayItems = []
+    allTasks.forEach(t => {
+      const p = getPlace(t.id)
+      if (!p) unplaced.push(t)
+      else if (p.allDay) alldayItems.push(t)
+      else placed.push({...t, place:p})
+    })
+
+    // 終日
+    if (!alldayItems.length){
+      allday.insertAdjacentHTML('beforeend', '<span style="color:#c0c0c6;font-size:12px;font-weight:600">なし</span>')
+    } else {
+      alldayItems.forEach(t => {
+        const c = document.createElement('div')
+        c.className = 'chip' + (t.done?' done':'')
+        c.innerHTML = '<span class="dot"></span>'+esc(t.title||'無題')
+        attachLongPress(c, () => openSheet(t.id, t.title||'無題'))
+        c.addEventListener('click', () => { if(!c._lp) toggle(t.id, t.toggleProperty, !t.done) })
+        allday.appendChild(c)
+      })
+    }
+
+    // 未配置（横スクロール）
+    $('#cntUn').textContent = unplaced.length
+    if (!unplaced.length){
+      unBox.innerHTML = '<div class="empty-strip">全部配置済みぷき✨</div>'
+    } else {
+      unplaced.forEach(t => {
+        const c = document.createElement('div')
+        c.className = 'uchip' + (t.done?' done':'')
+        c.innerHTML = '<div class="box">'+(t.done?'✓':'')+'</div>'+esc(t.title||'無題')
+        // tap: open time picker; long-press: toggle done
+        attachLongPress(c, () => toggle(t.id, t.toggleProperty, !t.done))
+        c.addEventListener('click', () => { if(!c._lp) openSheet(t.id, t.title||'無題') })
+        unBox.appendChild(c)
+      })
+    }
+
+    // タイムライングリッド
+    for (let h=HOUR_START; h<HOUR_END; h++){
+      const row = document.createElement('div'); row.className='hour-row'
+      row.innerHTML = '<div class="hlabel">'+h+':00</div><div class="hline"></div>'
+      tl.appendChild(row)
+    }
+    const evLayer = document.createElement('div')
+    evLayer.style.cssText = 'position:absolute;left:74px;right:26px;top:0;height:'+((HOUR_END-HOUR_START)*HOUR_PX)+'px;pointer-events:none;'
+    tl.style.position = 'relative'
+    tl.appendChild(evLayer)
+
+    placed.sort((a,b)=>toMin(a.place.start)-toMin(b.place.start))
+    placed.forEach(t => {
+      const top = Math.max(0, topFor(t.place.start))
+      const height = Math.max(38, topFor(t.place.end||t.place.start) - top)
+      const c = document.createElement('div')
+      c.className = 'evcard' + (t.done?' done':'')
+      c.style.top = top+'px'
+      c.style.minHeight = height+'px'
+      c.innerHTML = '<div class="body"><div class="t">'+t.place.start+' 〜 '+t.place.end+'</div>'
+        + '<div class="ti">'+esc(t.title||'無題')+'</div></div>'
+        + '<div class="box">✓</div>'
+      const box = c.querySelector('.box')
+      box.addEventListener('click', (e) => {
+        e.stopPropagation()
+        c.classList.add('pop'); setTimeout(()=>c.classList.remove('pop'),150)
+        toggle(t.id, t.toggleProperty, !t.done)
+      })
+      attachLongPress(c, () => openSheet(t.id, t.title||'無題'))
+      c.addEventListener('click', (e) => { if (e.target === box) return; if(!c._lp) openSheet(t.id, t.title||'無題') })
+      evLayer.appendChild(c)
+    })
+
+    // 空き時間ラベル（小さめ、タスクなし）
+    const nowLocal = jstNow()
+    const isToday = new Date(currentDate.getFullYear(),currentDate.getMonth(),currentDate.getDate()).toDateString() ===
+                    new Date(nowLocal.getFullYear(),nowLocal.getMonth(),nowLocal.getDate()).toDateString()
+    const nowMin = isToday ? nowLocal.getHours()*60 + nowLocal.getMinutes() : HOUR_START*60
+
+    const segs = []
+    let cursor = Math.max(nowMin, HOUR_START*60)
+    placed.forEach(t => {
+      if (t.done) return
+      const s = toMin(t.place.start), e = toMin(t.place.end||t.place.start)
+      if (s > cursor + 30) segs.push({s:cursor, e:s})
+      cursor = Math.max(cursor, e)
+    })
+    if (cursor < HOUR_END*60 - 30) segs.push({s:cursor, e:HOUR_END*60})
+
+    segs.forEach(sg => {
+      const top = (sg.s - HOUR_START*60) * (HOUR_PX/60)
+      const height = (sg.e - sg.s) * (HOUR_PX/60)
+      if (height < 40) return
+      const dm = sg.e - sg.s
+      const dh = Math.floor(dm/60), dmin = dm%60
+      const durHtml = (dh?dh+'<span class="unit">時間</span>':'') + (dmin?dmin+'<span class="unit">分</span>':'')
+      const f = document.createElement('div')
+      f.className = 'free'
+      f.style.top = (top+2)+'px'; f.style.height = Math.min(height-4, 38)+'px'
+      f.innerHTML = '<div class="h">🕒 空き</div><div class="dur">'+durHtml+'</div>'
+      evLayer.appendChild(f)
+    })
+
+    // Now line
+    if (isToday && nowMin >= HOUR_START*60 && nowMin <= HOUR_END*60){
+      const nline = document.createElement('div')
+      nline.className = 'now'
+      nline.style.top = ((nowMin - HOUR_START*60) * (HOUR_PX/60)) + 'px'
+      nline.innerHTML = '<div class="tag">'+pad(nowLocal.getHours())+':'+pad(nowLocal.getMinutes())+'</div>'
+      evLayer.appendChild(nline)
+    }
+
+    // Done list at bottom
+    const doneNow = allTasks.filter(t => t.done)
+    $('#doneCount').textContent = doneNow.length
+    const dl = $('#doneList'); dl.innerHTML = ''
+    if (!doneNow.length){
+      dl.innerHTML = '<div class="empty">まだ完了してないぷき</div>'
+    } else {
+      doneNow.forEach(t => {
+        const r = document.createElement('div'); r.className='drow'
+        r.innerHTML = '<div class="box">✓</div>'+esc(t.title||'無題')
+        r.addEventListener('click', () => toggle(t.id, t.toggleProperty, false))
+        dl.appendChild(r)
+      })
+    }
+  }
+
+  function attachLongPress(el, cb){
+    let timer = null
+    const start = () => { el._lp = false; timer = setTimeout(()=>{ el._lp = true; cb() }, 500) }
+    const cancel = () => { clearTimeout(timer); timer=null }
+    el.addEventListener('touchstart', start, {passive:true})
+    el.addEventListener('touchend', cancel)
+    el.addEventListener('touchmove', cancel)
+    el.addEventListener('mousedown', start)
+    el.addEventListener('mouseup', cancel)
+    el.addEventListener('mouseleave', cancel)
+  }
+
+  function renderRow(container, item, kind){
+    const div = document.createElement('div')
+    div.className = 'row'
+    let meta = ''
+    if (kind==='buy'){
+      const dLab = item.due ? item.due.slice(5).replace('-','/') : ''
+      const tags = (item.tags||[]).map(t=>'<span class="pill">'+esc(t)+'</span>').join(' ')
+      meta = '<div class="meta">'+(dLab?'<span class="pill due">'+dLab+'</span> ':'')+tags+'</div>'
+    } else if (kind==='pay'){
+      const dLab = item.due ? item.due.slice(5).replace('-','/') : ''
+      meta = '<div class="meta"><span class="pill due">'+dLab+'</span></div>'
+    } else if (kind==='later' && item.who){
+      meta = '<div class="meta"><span class="pill">'+esc(item.who)+'</span></div>'
+    }
+    div.innerHTML = '<div class="box">✓</div>'
+      + '<div class="body"><div class="title">'+esc(item.title||'無題')+'</div>'+meta+'</div>'
+      + (kind==='pay' && item.amount!=null ? '<div class="amt">'+fmtMoney(item.amount)+'</div>' : '')
+    div.addEventListener('click', () => {
+      div.classList.add('done')
+      api('/api/toggle', {pageId:item.id, property:item.toggleProperty, checked:true})
+        .then(()=>{ showToast('できたぷき✨', () => {
+          api('/api/toggle', {pageId:item.id, property:item.toggleProperty, checked:false}).then(loadAll)
+          div.classList.remove('done')
+        }); setTimeout(loadAll, 1200) })
+        .catch(()=>{ div.classList.remove('done'); showToast('うまくいかなかったぷき') })
+    })
+    container.appendChild(div)
+  }
+
+  async function loadAll(){
+    $('#refresh').classList.add('spin')
+    try {
+      const [tasks, buy, pay, later] = await Promise.all([
+        api('/api/list?kind=tasks'), api('/api/list?kind=buy'),
+        api('/api/list?kind=payments'), api('/api/list?kind=later'),
+      ])
+      // Merge open + done
+      allTasks = (tasks.all || [...(tasks.items||[]).map(t=>({...t,done:false})), ...(tasks.doneItems||[])])
+
+      // Clean stale placements
+      const alive = new Set(allTasks.map(t=>t.id))
+      const p = loadP(); let changed=false
+      Object.keys(p).forEach(k => { if (!alive.has(k)) { delete p[k]; changed=true } })
+      if (changed) saveP(p)
+
+      render()
+
+      const bC = $('#buy'); bC.innerHTML=''
+      if (!buy.items.length) bC.innerHTML = '<div class="empty">今週の買い出しはなしぷき</div>'
+      else buy.items.forEach(i => renderRow(bC, i, 'buy'))
+      $('#cntBuy').textContent = buy.items.length
+
+      const pC = $('#payments'); pC.innerHTML=''
+      if (!pay.items.length) pC.innerHTML = '<div class="empty">未払いなしぷき</div>'
+      else pay.items.forEach(i => renderRow(pC, i, 'pay'))
+      $('#cntPay').textContent = pay.items.length
+
+      const lC = $('#later'); lC.innerHTML=''
+      if (!later.items.length) lC.innerHTML = '<div class="empty">あとでやるはなしぷき</div>'
+      else later.items.forEach(i => renderRow(lC, i, 'later'))
+      $('#cntLater').textContent = later.items.length
+    } catch(e) {
+      showToast('読み込み失敗ぷき')
+      console.error(e)
+    } finally {
+      $('#refresh').classList.remove('spin')
+    }
+  }
+
+  $('#refresh').addEventListener('click', loadAll)
+  $('#today').addEventListener('click', ()=>{ currentDate = jstNow(); drawHeader(); loadAll() })
+  $('#prev').addEventListener('click', ()=>{ currentDate.setDate(currentDate.getDate()-1); drawHeader(); render() })
+  $('#next').addEventListener('click', ()=>{ currentDate.setDate(currentDate.getDate()+1); drawHeader(); render() })
+
+  drawHeader(); loadAll()
+  setInterval(render, 60000)
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{})
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) loadAll() })
+})()
+</script>
+</body>
+</html>
