@@ -1,0 +1,11 @@
+{
+  "name": "chapisuke-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ちゃぴすけ秘書のNotion連携アプリ",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}
